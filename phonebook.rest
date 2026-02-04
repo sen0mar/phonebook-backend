@@ -1,0 +1,35 @@
+### Root test
+GET http://localhost:3001/
+Accept: text/plain
+
+### Info page
+GET http://localhost:3001/info
+Accept: text/html
+
+### GET list of all persons
+GET http://localhost:3001/api/persons
+Accept: application/json
+
+### GET a single person (successful)
+GET http://localhost:3001/api/persons/1
+Accept:  application/json
+
+### GET a single person (failed)
+GET http://localhost:3001/api/persons/1000000
+Accept:  application/json
+
+### ADD a new person 
+POST http://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+  "name": "Test Person",
+  "number": "123-456"
+}
+
+### DELETE a person 
+DELETE http://localhost:3001/api/persons/1
+
+### Verify DELETE (404 if you deleted id=1)
+GET http://localhost:3001/api/persons/1
+Accept: application/json
