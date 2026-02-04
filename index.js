@@ -11,6 +11,8 @@ app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms :body"),
 ); // Logs https requests to console
 
+app.use(express.static("dist")); // Make express show static content (for linking front with back end)
+
 // List of users
 let persons = [
   {
