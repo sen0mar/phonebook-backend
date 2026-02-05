@@ -1,6 +1,9 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
-
+// Database
+const Person = require("./models/person");
+// Morgan
 const morgan = require("morgan");
 morgan.token("body", (req) => {
   return JSON.stringify(req.body);
@@ -13,30 +16,6 @@ app.use(
 
 app.use(express.static("dist")); // Make express show static content (for linking front with back end)
 
-// List of users
-let persons = [
-  {
-    id: "1",
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: "2",
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: "3",
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: "4",
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
-
 // Get test
 app.get("/", (req, res) => {
   res.send("hello");
@@ -44,85 +23,100 @@ app.get("/", (req, res) => {
 
 // Get list of persons
 app.get("/api/persons", (req, res) => {
-  res.json(persons);
+  Person.find({}).then((people) => {
+    res.json(people);
+  });
 });
 
 // Get information about how many people are in the list, and when was the request made
 app.get("/info", (req, res) => {
-  const numOfPeople = persons.length;
-  const timeReceived = new Date();
-  res.send(`
-    <p>Phonebook has info for ${numOfPeople}</p>
-    <p>${timeReceived}</p>
+  Person.countDocuments({}).then((count) => {
+    res.send(`
+      <p>Phonebook has info for ${count} people</p>
+      <p>${new Date()}</p>
     `);
+  });
 });
 
 // Fetch single user and display it based on the request
-const selectedUser = (id) => {
-  return persons.find((person) => person.id === id);
-};
-
-app.get("/api/persons/:id", (req, res) => {
-  const id = req.params.id;
-  const person = selectedUser(id);
-  if (person) {
-    res.send(person);
-  } else {
-    res.status(404).end();
-  }
+app.get("/api/persons/:id", (req, res, next) => {
+  Person.findById(req.params.id)
+    .then((person) => {
+      if (person) {
+        res.json(person);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
 });
 
 // Delete a user
-app.delete("/api/persons/:id", (req, res) => {
-  const id = req.params.id;
-  const oldLength = persons.length;
-
-  persons = persons.filter((person) => person.id !== id);
-
-  if (persons.length < oldLength) {
-    res.status(204).end();
-  } else {
-    res.status(404).end();
-    console.log("User was already deleted");
-  }
+app.delete("/api/persons/:id", (req, res, next) => {
+  Person.findByIdAndDelete(req.params.id)
+    .then((result) => {
+      res.status(204).end();
+    })
+    .catch((error) => next(error));
 });
 
 // Add a user
-const generatedId = () => {
-  return Math.floor(Math.random() * 1000000).toString();
-};
-
 app.post("/api/persons", (req, res) => {
-  const body = req.body;
+  const { name, number } = req.body;
 
   // Missing name or number
-  if (!body.name || !body.number) {
+  if (!name || !number) {
     return res.status(400).json({
       error: "Name or number is missing",
     });
   }
 
-  // Already existing name
-  const nameExists = persons.some((person) => person.name === body.name);
-  if (nameExists) {
-    return res.status(400).json({
-      error: "Name already exists",
-    });
-  }
+  const person = new Person({ name, number });
 
-  // If all previous conditions are satisfied, create a new person
-  const newPerson = {
-    id: generatedId(),
-    name: body.name,
-    number: body.number,
-  };
-
-  persons = persons.concat(newPerson);
-  res.json(newPerson);
+  person.save().then((savedPerson) => {
+    res.json(savedPerson);
+  });
 });
 
+// Update a user
+app.put("/api/persons/:id", (req, res, next) => {
+  const { name, number } = req.body;
+
+  Person.findByIdAndUpdate(
+    req.params.id,
+    { name, number },
+    { new: true, runValidators: true, context: "query" },
+  )
+    .then((updatedPerson) => res.json(updatedPerson))
+    .catch((error) => next(error));
+});
+
+// Handler of requests with unknown endpoint
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" });
+};
+app.use(unknownEndpoint);
+
+// Error handler middleware
+const errorHandler = (error, request, response, next) => {
+  console.log(error.message);
+
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "Malformed id" });
+  }
+  if (error.name === "ValidationError") {
+    return response.status(400).json({ error: error.message });
+  }
+  if (error.name === "MongoServerError" && error.code === 11000) {
+    return response.status(400).json({ error: "name must be unique" });
+  }
+
+  next(error);
+};
+app.use(errorHandler);
+
 // Listen to server requests
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Listening on localhost:${PORT}`);
 });
