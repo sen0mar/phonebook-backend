@@ -1,15 +1,16 @@
 import globals from "globals";
 import js from "@eslint/js";
 import stylisticJs from "@stylistic/eslint-plugin";
-import { defineConfig } from "eslint/config";
 
-export default defineConfig([
+export default [
   js.configs.recommended,
-
-  { files: ["**/*.js"], languageOptions: { sourceType: "commonjs" } },
   {
-    files: ["**/*.{js,mjs,cjs}"],
-    languageOptions: { globals: globals.browser },
+    files: ["**/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: { ...globals.node },
+      ecmaVersion: "latest",
+    },
     plugins: {
       "@stylistic/js": stylisticJs,
     },
@@ -28,4 +29,4 @@ export default defineConfig([
   {
     ignores: ["dist/**"],
   },
-]);
+];
