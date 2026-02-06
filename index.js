@@ -61,7 +61,7 @@ app.delete("/api/persons/:id", (req, res, next) => {
 });
 
 // Add a user
-app.post("/api/persons", (req, res) => {
+app.post("/api/persons", (req, res, next) => {
   const { name, number } = req.body;
 
   // Missing name or number
@@ -73,9 +73,10 @@ app.post("/api/persons", (req, res) => {
 
   const person = new Person({ name, number });
 
-  person.save().then((savedPerson) => {
-    res.json(savedPerson);
-  });
+  person
+    .save()
+    .then((savedPerson) => res.json(savedPerson))
+    .catch((error) => next(error));
 });
 
 // Update a user

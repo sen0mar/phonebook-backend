@@ -1,8 +1,11 @@
-// Database
 const mongoose = require("mongoose");
 mongoose.set("strictQuery", false);
 
 const url = process.env.MONGODB_URI;
+if (!url) {
+  console.error("MONGODB_URI is missing");
+  process.exit(1);
+}
 
 console.log("connecting to", url);
 
@@ -26,6 +29,13 @@ const personSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 8,
+    validate: {
+      validator: function (v) {
+        return /^\d{2,3}-\d+$/.test(v);
+      },
+      message: (props) =>
+        `${props.value} is not a valid phone number. Format must be XX-XXXXXXX or XXX-XXXXXXX`,
+    },
   },
 });
 
